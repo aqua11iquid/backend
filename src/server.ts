@@ -1,18 +1,29 @@
-import express, { type Request, type Response } from "express";
+import dotenv from "dotenv";
+dotenv.config();
+
+import path from "path";
+import express from "express";
 import cors from "cors";
-// import { pool } from "./db";
 
 import authRouter from "./api/auth";
+import stickerRouter from "./api/stickers";
 
 const app = express();
 
+app.use(cors({
+  origin: true,
+  credentials: true,
+}));
+
 app.use(express.json());
-app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+app.use(express.static(path.resolve("frontend")));
+app.use("/uploads", express.static(path.resolve("uploads")));
 
 app.use("/api/auth", authRouter);
+app.use("/stickers", stickerRouter);
 
 app.get("/", (req, res) => {
-  res.status(200).json({ status: "ok!!!!!!" });
+  res.sendFile(path.resolve("frontend/index.html"));
 });
 
 const PORT = 3000;
@@ -20,3 +31,5 @@ const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
+
+export default app;

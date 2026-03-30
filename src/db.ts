@@ -29,6 +29,6 @@
 
 // export { pool };
 
-import { PrismaClient } from "./generated/prisma/client";
-const prisma = new PrismaClient();
-export default prisma;
+import { PrismaClient } from "./generated/prisma";
+
+export const prisma = new PrismaClient();

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sticker Maker</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Sticker Maker</h1>
+    <p class="subtitle">Войдите через телеграмм</p>
+
+    <div class="card">
+      <h2>1. Войти </h2>
+
+      <div id="telegram-login-block">
+        <script
+          async
+          src="https://telegram.org/js/telegram-widget.js?23"
+          data-telegram-login="StickersGif228_bot"
+          data-size="large"
+          data-userpic="false"
+          data-request-access="write"
+          data-onauth="onTelegramAuth(user)">
+        </script>
+      </div>
+
+      <div id="auth-status" class="status">Вы не авторизованы</div>
+      <div id="user-info" class="user-info"></div>
+      <button id="logout-btn" class="hidden">Выйти</button>
+    </div>
+
+    <div class="card">
+      <h2>2. Загрузить картинку</h2>
+
+      <label for="fileInput">Выберите файл:</label>
+      <input
+        type="file"
+        id="fileInput"
+        accept="image/png,image/jpeg,image/jpg,image/webp"
+      />
+
+      <button id="uploadBtn">Сделать стикер</button>
+
+      <div id="upload-status" class="status"></div>
+      <div id="result" class="result"></div>
+    </div>
+  </div>
+
+  <script src="./script.js"></script>
+</body>
+</html>

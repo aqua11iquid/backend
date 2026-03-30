@@ -1,36 +1,102 @@
-import express, { Request, Response } from "express";
-import { hashPass } from "../utils/hashPass";
-import prisma from "../db";
+import { Router } from "express";
+import crypto from "crypto";
+import jwt from "jsonwebtoken";
+import { prisma } from "../db";
 
-interface RegisterBody {
+const router = Router();
+
+type TelegramAuthBody = {
+  id: string;
+  first_name?: string;
+  last_name?: string;
   username?: string;
-  email?: string;
-  password?: string;
+  photo_url?: string;
+  auth_date: string;
+  hash: string;
+};
+
+function checkTelegramAuth(data: TelegramAuthBody, botToken: string) {
+  const secret = crypto.createHash("sha256").update(botToken).digest();
+
+  const dataCheckArr = Object.entries(data)
+    .filter(([key]) => key !== "hash")
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}=${value}`);
+
+  const dataCheckString = dataCheckArr.join("\n");
+
+  const hmac = crypto
+    .createHmac("sha256", secret)
+    .update(dataCheckString)
+    .digest("hex");
+
+  return hmac === data.hash;
 }
 
-const router = express.Router();
+router.post("/telegram", async (req, res) => {
+  try {
+    const body = req.body as TelegramAuthBody;
 
-router.post("/login", async function (params) {});
-router.post("/logout", async function (params) {});
-
-router.post(
-  "/register",
-  async function (req: Request<{}, {}, RegisterBody>, res: Response) {
-    try {
-      const { username, email, password } = req.body;
-      if (!email || !password || !username)
-        throw new Error("Email or password error1");
-      if (email) {
-      } // есть ли такой пользователь в бд
-      const hashedPass = await hashPass(password);
-      const newUser = prisma.user.create({
-        data: { username, email, password: hashedPass },
-      });
-      return res.status(200).json({ text: newUser });
-    } catch (e) {
-      return res.status(400).json({ error: e });
+    if (!body?.id || !body?.auth_date || !body?.hash) {
+      return res.status(400).json({ error: "Invalid telegram auth payload" });
     }
-  },
-);
 
-export default router;
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    const jwtSecret = process.env.JWT_SECRET;
+
+    if (!botToken || !jwtSecret) {
+      return res.status(500).json({ error: "Server env is not configured" });
+    }
+
+    const isValid = checkTelegramAuth(body, botToken);
+
+    if (!isValid) {
+      return res.status(401).json({ error: "Telegram auth validation failed" });
+    }
+
+    const user = await prisma.user.upsert({
+      where: {
+        telegramId: String(body.id),
+      },
+      update: {
+        telegramUsername: body.username ?? null,
+        firstName: body.first_name ?? null,
+        lastName: body.last_name ?? null,
+        photoUrl: body.photo_url ?? null,
+        authDate: Number(body.auth_date),
+      },
+      create: {
+        telegramId: String(body.id),
+        telegramUsername: body.username ?? null,
+        firstName: body.first_name ?? null,
+        lastName: body.last_name ?? null,
+        photoUrl: body.photo_url ?? null,
+        authDate: Number(body.auth_date),
+
+        username: body.username ?? null,
+        email: null,
+        password: null,
+      },
+    });
+
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        telegramId: user.telegramId,
+      },
+      jwtSecret,
+      { expiresIn: "7d" }
+    );
+
+    return res.json({
+      success: true,
+      token,
+      user,
+    });
+  } catch (error) {
+    console.error("TELEGRAM AUTH ERROR:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+ export default router;
